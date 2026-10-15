@@ -1,0 +1,232 @@
+
+DATA CHECKS
+train : 26235 rows; 0 missing cells; 0 duplicate IDs
+bal : 7466 rows; 0 missing cells; 0 duplicate IDs
+test : 11243 rows; 0 missing cells; 0 duplicate IDs
+
+Q1: grade / sub_grade and loan_status (original training set)
+  Level Fully_Paid Charged_Off Charged_Off_Percent
+1     A       6355         383            5.684179
+2     B       7009         933           11.747671
+3     C       4471         897           16.710134
+4     D       2749         756           21.569187
+5     E       1332         482           26.571114
+6     F        453         218           32.488823
+7     G        133          64           32.487310
+   Level Fully_Paid Charged_Off Charged_Off_Percent
+1     A1        705          15            2.083333
+2     A2        946          49            4.924623
+3     A3       1162          67            5.451587
+4     A4       1829         118            6.060606
+5     A5       1713         134            7.255008
+6     B1       1116         105            8.599509
+7     B2       1206         152           11.192931
+8     B3       1704         228           11.801242
+9     B4       1458         214           12.799043
+10    B5       1525         234           13.303013
+11    C1       1187         215           15.335235
+12    C2       1104         218           16.490166
+13    C3        852         181           17.521781
+14    C4        663         137           17.125000
+15    C5        665         146           18.002466
+16    D1        516         109           17.440000
+17    D2        726         182           20.044053
+18    D3        597         190           24.142313
+19    D4        503         135           21.159875
+20    D5        407         140           25.594150
+21    E1        356         138           27.935223
+22    E2        316         104           24.761905
+23    E3        258          78           23.214286
+24    E4        208          88           29.729730
+25    E5        194          74           27.611940
+26    F1        152          63           29.302326
+27    F2        101          44           30.344828
+28    F3         94          40           29.850746
+29    F4         63          35           35.714286
+30    F5         43          36           45.569620
+31    G1         43          18           29.508197
+32    G2         34          17           33.333333
+33    G3         17          15           46.875000
+34    G4         22           7           24.137931
+35    G5         17           7           29.166667
+null device 
+          1 
+
+Q2: concise exploration using original training data
+        Level Fully_Paid Charged_Off Charged_Off_Percent
+1 Charged Off          0        3733                 100
+2  Fully Paid      22502           0                   0
+  Level Fully_Paid Charged_Off Charged_Off_Percent
+1    36      17712        2099            10.59512
+2    60       4790        1634            25.43587
+     Level Fully_Paid Charged_Off Charged_Off_Percent
+1 MORTGAGE      10014        1568            13.53825
+2    OTHER         57          16            21.91781
+3      OWN       1638         282            14.68750
+4     RENT      10793        1867            14.74724
+                Level Fully_Paid Charged_Off Charged_Off_Percent
+1                 car        877         109           11.054767
+2         credit card       3067         354           10.347852
+3  Debt consolidation      10524        1836           14.854369
+4         educational        180          32           15.094340
+5    home improvement       1717         239           12.218814
+6               house        199          40           16.736402
+7      major purchase       1289         144           10.048849
+8             medical        378          72           16.000000
+9              moving        350          53           13.151365
+10              other       2196         426           16.247140
+11   renewable_energy         51          14           21.538462
+12     small business        879         323           26.871880
+13           vacation        206          33           13.807531
+14            wedding        589          58            8.964451
+                  Outcome      Variable     N          Min       Median         Mean          Max
+Charged Off.1 Charged Off annual_income  3733 4.080000e+03 5.400000e+04 6.353067e+04 1.250000e+06
+Charged Off.2 Charged Off           dti  3733 0.000000e+00 1.433000e-01 1.400481e-01 2.985000e-01
+Charged Off.3 Charged Off   installment  3733 2.279000e+01 2.977000e+02 3.410743e+02 1.305190e+03
+Charged Off.4 Charged Off      int_rate  3733 5.420000e-02 1.372000e-01 1.387954e-01 2.440000e-01
+Charged Off.5 Charged Off   loan_amount  3733 1.000000e+03 1.000000e+04 1.232179e+04 3.500000e+04
+Charged Off.6 Charged Off     total_acc  3733 2.000000e+00 2.000000e+01 2.168256e+01 7.000000e+01
+Charged Off.7 Charged Off           ITI  3733 1.663778e-03 6.630000e-02 7.374669e-02 2.975585e-01
+Fully Paid.1   Fully Paid annual_income 22502 4.000000e+03 6.000000e+04 7.035192e+04 6.000000e+06
+Fully Paid.2   Fully Paid           dti 22502 0.000000e+00 1.322000e-01 1.315905e-01 2.993000e-01
+Fully Paid.3   Fully Paid   installment 22502 1.569000e+01 2.784800e+02 3.230928e+02 1.283500e+03
+Fully Paid.4   Fully Paid      int_rate 22502 5.420000e-02 1.149000e-01 1.164459e-01 2.411000e-01
+Fully Paid.5   Fully Paid   loan_amount 22502 5.000000e+02 9.600000e+03 1.094985e+04 3.500000e+04
+Fully Paid.6   Fully Paid     total_acc 22502 2.000000e+00 2.100000e+01 2.218403e+01 9.000000e+01
+Fully Paid.7   Fully Paid           ITI 22502 3.356800e-04 5.612547e-02 6.412413e-02 3.202620e-01
+null device 
+          1 
+
+Q3: observed term values
+
+   36    60 
+19811  6424 
+
+Q4: ITI = 12 * installment / annual_income
+         Min     Median       Mean      Max
+1 0.00033568 0.05749909 0.06549334 0.320262
+
+Q5: logistic regression on original training data
+             Predicted
+Actual        Fully Paid Charged Off
+  Fully Paid        9601          42
+  Charged Off       1563          37
+    TN FP   FN TP         FPR      FNR  Accuracy
+1 9601 42 1563 37 0.004355491 0.976875 0.8572445
+
+Q6: balance, full logistic regression, backward elimination, maximal and pruned CART
+
+ Fully Paid Charged Off 
+       3733        3733 
+
+ Fully Paid Charged Off 
+        0.5         0.5 
+  Step        Removed    P_value
+1    1     emp_length 0.44541844
+2    2  annual_income 0.31631707
+3    3      total_acc 0.21867022
+4    4    loan_amount 0.18635975
+5    5 home_ownership 0.07943349
+6    6            dti 0.07674038
+Optimised logistic formula:
+loan_status ~ state + purpose + sub_grade + term + verification_status + 
+    installment + int_rate + ITI
+             CP nsplit rel error    xerror       xstd
+1  0.2266273774      0 1.0000000 1.0332173 0.01156688
+2  0.0466113046      1 0.7733726 0.7897134 0.01131449
+3  0.0060719707      2 0.7267613 0.7508706 0.01120837
+4  0.0059826770      5 0.7085454 0.7372087 0.01116650
+5  0.0034824538     10 0.6774712 0.7318511 0.01114943
+6  0.0025448701     11 0.6739887 0.7299759 0.01114336
+7  0.0024109295     13 0.6688990 0.7417627 0.01118072
+8  0.0022769890     14 0.6664881 0.7401554 0.01117573
+9  0.0021430485     21 0.6482722 0.7393517 0.01117322
+10 0.0020091080     23 0.6439861 0.7439057 0.01118732
+11 0.0018751674     25 0.6399679 0.7439057 0.01118732
+12 0.0017412269     30 0.6305920 0.7479239 0.01119954
+13 0.0016072864     32 0.6271096 0.7439057 0.01118732
+14 0.0015179927     49 0.5979105 0.7431021 0.01118485
+15 0.0014286990     54 0.5890705 0.7481918 0.01120034
+16 0.0013394053     59 0.5778194 0.7489954 0.01120276
+17 0.0012054648     65 0.5695151 0.7519421 0.01121155
+18 0.0011608179     78 0.5537102 0.7570319 0.01122647
+19 0.0010715242     81 0.5502277 0.7572998 0.01122724
+20 0.0009822306     94 0.5362979 0.7648004 0.01124860
+21 0.0009643718     98 0.5322797 0.7744441 0.01127503
+22 0.0009375837    104 0.5263863 0.7752478 0.01127718
+23 0.0009107956    111 0.5194214 0.7776587 0.01128358
+24 0.0008929369    118 0.5129922 0.7776587 0.01128358
+25 0.0008036432    125 0.5062952 0.7830163 0.01129754
+26 0.0007653745    169 0.4679882 0.7854273 0.01130370
+27 0.0007589963    190 0.4444147 0.7886418 0.01131181
+28 0.0007143495    199 0.4363782 0.7934637 0.01132374
+29 0.0006697027    214 0.4235200 0.8012323 0.01134234
+30 0.0005357621    244 0.4028931 0.8041789 0.01134921
+31 0.0004821859    289 0.3771765 0.8124833 0.01136797
+32 0.0004464684    296 0.3726226 0.8194482 0.01138307
+33 0.0004018216    299 0.3712832 0.8282882 0.01140137
+34 0.0003571747    320 0.3627110 0.8373962 0.01141924
+35 0.0003444185    327 0.3600321 0.8419502 0.01142781
+36 0.0003348513    342 0.3525315 0.8424859 0.01142880
+37 0.0002678811    346 0.3511921 0.8424859 0.01142880
+38 0.0002009108    376 0.3428878 0.8470399 0.01143708
+39 0.0001339405    380 0.3420841 0.8515939 0.01144511
+40 0.0000000000    392 0.3404768 0.8582909 0.01145647
+                        Model Complexity   TN   FP  FN   TP       FPR      FNR  Accuracy
+1   Logistic (all predictors)        114 6207 3436 590 1010 0.3563206 0.368750 0.6419105
+2 Logistic (backward p-value)         97 6225 3418 579 1021 0.3544540 0.361875 0.6444899
+3                Maximal CART        392 5318 4325 659  941 0.4485119 0.411875 0.5567019
+4      CART (10-fold CV, 1SE)          5 5159 4484 472 1128 0.4650005 0.295000 0.5591924
+null device 
+          1 
+
+Q7: CART recursive feature elimination
+RFE validation fold 1 of 10
+RFE validation fold 2 of 10
+RFE validation fold 3 of 10
+RFE validation fold 4 of 10
+RFE validation fold 5 of 10
+RFE validation fold 6 of 10
+RFE validation fold 7 of 10
+RFE validation fold 8 of 10
+RFE validation fold 9 of 10
+RFE validation fold 10 of 10
+   Variables CV_Accuracy          SE
+1          1   0.5890489 0.013288140
+2          2   0.6111669 0.005761194
+3          3   0.6149102 0.006776557
+4          4   0.6177245 0.006958593
+5          5   0.6177245 0.006877787
+6          6   0.6178592 0.006770476
+7          7   0.6206714 0.006109612
+8          8   0.6233524 0.005429939
+9          9   0.6261598 0.005097291
+10        10   0.6303153 0.003649571
+11        11   0.6299132 0.003723742
+12        12   0.6299132 0.003723742
+13        13   0.6299132 0.003723742
+14        14   0.6299132 0.003723742
+RFE selected 10 variables:
+ [1] "state"         "emp_length"    "purpose"       "sub_grade"     "term"          "annual_income" "dti"          
+ [8] "installment"   "int_rate"      "ITI"          
+        Variable
+1          state
+2     emp_length
+3        purpose
+4      sub_grade
+5           term
+6  annual_income
+7            dti
+8    installment
+9       int_rate
+10           ITI
+                  Model Complexity   TN   FP  FN   TP       FPR   FNR  Accuracy
+1 CART before RFE (1SE)          5 5159 4484 472 1128 0.4650005 0.295 0.5591924
+2  CART after RFE (1SE)          5 5159 4484 472 1128 0.4650005 0.295 0.5591924
+             Predicted
+Actual        Fully Paid Charged Off
+  Fully Paid        5159        4484
+  Charged Off        472        1128
+Accuracy change (percentage points): 0 
+
+Q8 and written explanations deferred as requested.

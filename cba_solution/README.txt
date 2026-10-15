@@ -1,4 +1,4 @@
-BC2406 CBA — R analyses for Questions 1–7
+BC2406 CBA — R analyses for Questions 1–8
 
 1. Open this folder as your working directory in R/RStudio.
 2. Ensure the recommended R package rpart is installed.
@@ -18,5 +18,8 @@ by stratified 10-fold validation; each fold learns its own elimination path and
 uses inner 10-fold CV/1SE pruning. The final model is refitted on trainset.bal.csv.
 CART complexity is its number of splits. FPR and FNR are proportions (0 to 1).
 
-Written explanations and the Q8 advisory are deferred as requested.
+Open question_by_question_solutions.html for the complete labelled report.
+The Markdown version is question_by_question_solutions.md.
+Each question includes its R solution, results and a brief explanation.
+Question 8 contains the CEO advisory (under 200 words).
 No statistical significance claim is made from accuracy changes alone.

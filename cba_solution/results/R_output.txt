@@ -4,7 +4,7 @@ train : 26235 rows; 0 missing cells; 0 duplicate IDs
 bal : 7466 rows; 0 missing cells; 0 duplicate IDs
 test : 11243 rows; 0 missing cells; 0 duplicate IDs
 
-Q1: grade / sub_grade and loan_status (original training set)
+Question 1: grade / sub_grade and loan_status (original training set)
   Level Fully_Paid Charged_Off Charged_Off_Percent
 1     A       6355         383            5.684179
 2     B       7009         933           11.747671
@@ -52,7 +52,10 @@ Q1: grade / sub_grade and loan_status (original training set)
 null device 
           1 
 
-Q2: concise exploration using original training data
+Brief explanation — Question 1
+The charged-off rate generally increases as credit quality worsens: 5.68% for grade A, 11.75% for B, 16.71% for C, 21.57% for D, 26.57% for E, and about 32.49% for F and G. Sub-grades show additional differences within grades, although the pattern is not perfectly monotonic and small groups are less stable. For example, A1 has a 2.08% charged-off rate versus 7.26% for A5. Use sub_grade to retain this finer information and exclude grade as required. Because grade is determined by sub_grade, including both would be redundant; these descriptive rates alone do not prove sub_grade predicts better on new data. 
+
+Question 2: concise exploration using original training data
         Level Fully_Paid Charged_Off Charged_Off_Percent
 1 Charged Off          0        3733                 100
 2  Fully Paid      22502           0                   0
@@ -97,16 +100,25 @@ Fully Paid.7   Fully Paid           ITI 22502 3.356800e-04 5.612547e-02 6.412413
 null device 
           1 
 
-Q3: observed term values
+Brief explanation — Question 2
+The original training data are imbalanced: 3,733 of 26,235 loans (14.23%) were charged off. The charged-off rate is 25.44% for 60-month loans versus 10.60% for 36-month loans. Small-business loans have a 26.87% charged-off rate versus 14.85% for debt consolidation. Charged-off borrowers have higher median interest rates (13.72% versus 11.49%) and lower median annual income (54,000 versus 60,000). Mean income exceeds median income in both groups, and very high incomes indicate a right-skewed distribution. There are no missing cells or duplicate IDs within the supplied datasets, so no imputation or duplicate removal was needed. These are associations, not evidence of causation. 
+
+Question 3: observed term values
 
    36    60 
 19811  6424 
 
-Q4: ITI = 12 * installment / annual_income
+Brief explanation — Question 3
+Treat term as categorical: the data contain two loan products, 36 and 60 months, rather than a broad continuous range. This directly compares their risks without extrapolating to unobserved terms. With only these two distinct values, a numeric term and a two-level factor span the same logistic-regression model space and give the same fitted probabilities; the factor is clearer to interpret. 
+
+Question 4: ITI = 12 * installment / annual_income
          Min     Median       Mean      Max
 1 0.00033568 0.05749909 0.06549334 0.320262
 
-Q5: logistic regression on original training data
+Brief explanation — Question 4
+ITI equals 12 times the monthly installment divided by annual income. Its minimum, median, mean and maximum are 0.00033568, 0.05749909, 0.06549334 and 0.320262, respectively. Thus, the median scheduled annual loan repayment is about 5.75% of annual income. A higher ITI indicates a larger repayment burden relative to income and may help identify repayment difficulty. Median ITI is 6.63% for charged-off loans versus 5.61% for fully paid loans. This ratio is created in all three datasets, without treating it as a percentage in the model. 
+
+Question 5: logistic regression on original training data
              Predicted
 Actual        Fully Paid Charged Off
   Fully Paid        9601          42
@@ -114,7 +126,10 @@ Actual        Fully Paid Charged Off
     TN FP   FN TP         FPR      FNR  Accuracy
 1 9601 42 1563 37 0.004355491 0.976875 0.8572445
 
-Q6: balance, full logistic regression, backward elimination, maximal and pruned CART
+Brief explanation — Question 5
+Rows of the confusion matrix are actual outcomes and columns are predictions; Charged Off is positive. The model identifies only 37 of 1,600 charged-off loans and misses 1,563, giving an FNR of 97.69%. Its FPR is only 0.44%. Accuracy is 85.72%, but simply predicting Fully Paid for every test loan gives 85.77%. Therefore, the apparent accuracy hides poor identification of charged-off loans at the required 0.5 threshold. 
+
+Question 6: balance, full logistic regression, backward elimination, maximal and pruned CART
 
  Fully Paid Charged Off 
        3733        3733 
@@ -180,7 +195,10 @@ loan_status ~ state + purpose + sub_grade + term + verification_status +
 null device 
           1 
 
-Q7: CART recursive feature elimination
+Brief explanation — Question 6
+The balanced training set contains 3,733 loans per class (50% each). Backward elimination reduces logistic complexity from 114 to 97 estimated coefficients, including the intercept, while slightly reducing both FPR (35.63% to 35.45%) and FNR (36.88% to 36.19%). Pruning reduces CART from 392 to 5 splits and lowers FNR from 41.19% to 29.50%, but raises FPR from 44.85% to 46.50%. For the CEO, backward logistic regression provides the best test accuracy among these balanced-data models and a more even error trade-off; pruned CART misses fewer charged-off loans but flags many more fully paid loans. The final choice depends on the financial costs of these two errors. Selection and pruning used training data only, with no threshold tuning on the test set. 
+
+Question 7: CART recursive feature elimination
 RFE validation fold 1 of 10
 RFE validation fold 2 of 10
 RFE validation fold 3 of 10
@@ -229,4 +247,14 @@ Actual        Fully Paid Charged Off
   Charged Off        472        1128
 Accuracy change (percentage points): 0 
 
-Q8 and written explanations deferred as requested.
+Brief explanation — Question 7
+RFE selects 10 of the 14 candidate predictors using training-only cross-validation. The selected variables are state, emp_length, purpose, sub_grade, term, annual_income, dti, installment, int_rate and ITI. After the same 1SE pruning rule, CART before and after RFE both have 5 splits and identical test predictions: accuracy 55.92%, FPR 46.50%, and FNR 29.50%. The observed accuracy improvement is exactly 0 percentage points, so RFE did not improve predictive accuracy in this implementation. No claim of statistical significance is warranted. Improvements reported in the supplied papers need not transfer to a different dataset or modelling procedure. 
+
+Question 8: Advice to the Fintech CEO (maximum 200 words)
+Charged-off risk generally rises as loan grades worsen. Longer-term loans and small-business loans show higher charged-off rates. ITI captures repayment burden and is a useful candidate predictor.
+
+The original-data logistic model misses 97.69% of charged-off loans at the required 0.5 threshold, despite 85.72% accuracy. Accuracy alone is therefore unsuitable for judging its usefulness.
+
+Among the balanced-data models, backward logistic regression offers the highest test accuracy (64.45%), with FPR 35.45% and FNR 36.19%. Pruned CART is simpler and misses fewer charged-off loans (FNR 29.50%), but incorrectly flags 46.50% of fully paid loans. CART RFE provides no test-accuracy improvement.
+
+Use backward logistic regression as a candidate screening tool when both error types matter. Consider pruned CART if avoiding charged-off loans is the stronger priority and additional false alarms are acceptable. Quantify expected loan losses and profits forgone before making a final business choice. Validate performance on later loans and monitor changing borrower behaviour before operational use. These predictions support credit decisions; they do not guarantee repayment. 

@@ -1,0 +1,401 @@
+<!doctype html><html><head><meta charset="utf-8"><title>BC2406 — Question-by-question solutions</title><style>body{font:16px/1.6 system-ui,sans-serif;max-width:1150px;margin:40px auto;padding:0 24px;color:#182230}h2{border-top:2px solid #ccc;padding-top:22px}pre{background:#f1f4f8;padding:16px;overflow:auto;font-size:13px}table{border-collapse:collapse;font-size:14px;margin:20px 0;display:block;overflow:auto}td,th{border:1px solid #ccd3dc;padding:6px 10px;text-align:left}th{background:#edf2f7}p{max-width:1000px}</style></head><body><h1>BC2406 — R solutions and explanations</h1><p>Positive: Charged Off. Logistic threshold: 0.5. Models exclude id and grade. Test data are used only for final evaluation.</p><h2>Shared setup</h2><pre># Run from the folder containing this file: Rscript solution.R
+# Required package: rpart (included in standard R recommended packages).
+# Models are selected using training data only. Positive = Charged Off.
+options(stringsAsFactors = FALSE, width = 120)
+library(rpart)
+set.seed(2406)
+dir.create(&#x27;results&#x27;, showWarnings = FALSE)
+sink(&#x27;results/R_output.txt&#x27;, split = TRUE)
+write_result &lt;- function(x, name) {
+  print(x)
+  write.csv(x, file.path(&#x27;results&#x27;, paste0(name, &#x27;.csv&#x27;)), row.names = FALSE)
+}
+train &lt;- read.csv(&#x27;data/trainset.csv&#x27;)
+bal &lt;- read.csv(&#x27;data/trainset.bal.csv&#x27;)
+test &lt;- read.csv(&#x27;data/testset.csv&#x27;)
+cat(&#x27;\nDATA CHECKS\n&#x27;)
+for (nm in c(&#x27;train&#x27;,&#x27;bal&#x27;,&#x27;test&#x27;)) {
+  d &lt;- get(nm)
+  cat(nm, &#x27;:&#x27;, nrow(d), &#x27;rows;&#x27;, sum(is.na(d)), &#x27;missing cells;&#x27;,
+      sum(duplicated(d$id)), &#x27;duplicate IDs\n&#x27;)
+  stopifnot(!anyNA(d), !anyDuplicated(d$id), all(d$annual_income &gt; 0))
+}
+stopifnot(!length(intersect(train$id, test$id)), all(bal$id %in% train$id))
+# No imputation, winsorisation or row deletion is necessary for these files.
+# Add ITI to ALL THREE data frames.
+train$ITI &lt;- 12 * train$installment / train$annual_income
+bal$ITI &lt;- 12 * bal$installment / bal$annual_income
+test$ITI &lt;- 12 * test$installment / test$annual_income
+
+</pre>
+<h2>Question 1</h2>
+<pre>cat(&#x27;\nQ1: grade / sub_grade and loan_status (original training set)\n&#x27;)
+rate_table &lt;- function(d, variable) {
+  t &lt;- table(d[[variable]], factor(d$loan_status, levels=c(&#x27;Fully Paid&#x27;,&#x27;Charged Off&#x27;)))
+  data.frame(Level=rownames(t), Fully_Paid=t[,1], Charged_Off=t[,2],
+             Charged_Off_Percent=100*t[,2]/rowSums(t), row.names=NULL)
+}
+grade_tab &lt;- rate_table(train, &#x27;grade&#x27;)
+subgrade_tab &lt;- rate_table(train, &#x27;sub_grade&#x27;)
+write_result(grade_tab, &#x27;Q1_grade&#x27;)
+write_result(subgrade_tab, &#x27;Q1_sub_grade&#x27;)
+pdf(&#x27;results/Q1_stacked_bars.pdf&#x27;, width=12, height=7)
+for (v in c(&#x27;grade&#x27;,&#x27;sub_grade&#x27;)) {
+  tab &lt;- table(train$loan_status, train[[v]])
+  barplot(prop.table(tab, 2), col=c(&#x27;tomato&#x27;,&#x27;steelblue&#x27;), las=2,
+          main=paste(&#x27;Loan status by&#x27;, v), ylab=&#x27;Proportion&#x27;, xlab=v,
+          legend.text=rownames(tab), args.legend=list(x=&#x27;topleft&#x27;, bty=&#x27;n&#x27;))
+}
+dev.off()
+
+</pre>
+<h3>Grade and loan status</h3><table><thead><tr><th>Level</th><th>Fully_Paid</th><th>Charged_Off</th><th>Charged_Off_Percent</th></tr></thead><tbody>
+<tr><td>A</td><td>6355</td><td>383</td><td>5.6841793</td></tr>
+<tr><td>B</td><td>7009</td><td>933</td><td>11.747671</td></tr>
+<tr><td>C</td><td>4471</td><td>897</td><td>16.710134</td></tr>
+<tr><td>D</td><td>2749</td><td>756</td><td>21.569187</td></tr>
+<tr><td>E</td><td>1332</td><td>482</td><td>26.571114</td></tr>
+<tr><td>F</td><td>453</td><td>218</td><td>32.488823</td></tr>
+<tr><td>G</td><td>133</td><td>64</td><td>32.48731</td></tr>
+</tbody></table>
+<h3>Sub-grade and loan status</h3><table><thead><tr><th>Level</th><th>Fully_Paid</th><th>Charged_Off</th><th>Charged_Off_Percent</th></tr></thead><tbody>
+<tr><td>A1</td><td>705</td><td>15</td><td>2.0833333</td></tr>
+<tr><td>A2</td><td>946</td><td>49</td><td>4.9246231</td></tr>
+<tr><td>A3</td><td>1162</td><td>67</td><td>5.4515867</td></tr>
+<tr><td>A4</td><td>1829</td><td>118</td><td>6.0606061</td></tr>
+<tr><td>A5</td><td>1713</td><td>134</td><td>7.2550081</td></tr>
+<tr><td>B1</td><td>1116</td><td>105</td><td>8.5995086</td></tr>
+<tr><td>B2</td><td>1206</td><td>152</td><td>11.192931</td></tr>
+<tr><td>B3</td><td>1704</td><td>228</td><td>11.801242</td></tr>
+<tr><td>B4</td><td>1458</td><td>214</td><td>12.799043</td></tr>
+<tr><td>B5</td><td>1525</td><td>234</td><td>13.303013</td></tr>
+<tr><td>C1</td><td>1187</td><td>215</td><td>15.335235</td></tr>
+<tr><td>C2</td><td>1104</td><td>218</td><td>16.490166</td></tr>
+<tr><td>C3</td><td>852</td><td>181</td><td>17.521781</td></tr>
+<tr><td>C4</td><td>663</td><td>137</td><td>17.125</td></tr>
+<tr><td>C5</td><td>665</td><td>146</td><td>18.002466</td></tr>
+<tr><td>D1</td><td>516</td><td>109</td><td>17.44</td></tr>
+<tr><td>D2</td><td>726</td><td>182</td><td>20.044053</td></tr>
+<tr><td>D3</td><td>597</td><td>190</td><td>24.142313</td></tr>
+<tr><td>D4</td><td>503</td><td>135</td><td>21.159875</td></tr>
+<tr><td>D5</td><td>407</td><td>140</td><td>25.59415</td></tr>
+<tr><td>E1</td><td>356</td><td>138</td><td>27.935223</td></tr>
+<tr><td>E2</td><td>316</td><td>104</td><td>24.761905</td></tr>
+<tr><td>E3</td><td>258</td><td>78</td><td>23.214286</td></tr>
+<tr><td>E4</td><td>208</td><td>88</td><td>29.72973</td></tr>
+<tr><td>E5</td><td>194</td><td>74</td><td>27.61194</td></tr>
+<tr><td>F1</td><td>152</td><td>63</td><td>29.302326</td></tr>
+<tr><td>F2</td><td>101</td><td>44</td><td>30.344828</td></tr>
+<tr><td>F3</td><td>94</td><td>40</td><td>29.850746</td></tr>
+<tr><td>F4</td><td>63</td><td>35</td><td>35.714286</td></tr>
+<tr><td>F5</td><td>43</td><td>36</td><td>45.56962</td></tr>
+<tr><td>G1</td><td>43</td><td>18</td><td>29.508197</td></tr>
+<tr><td>G2</td><td>34</td><td>17</td><td>33.333333</td></tr>
+<tr><td>G3</td><td>17</td><td>15</td><td>46.875</td></tr>
+<tr><td>G4</td><td>22</td><td>7</td><td>24.137931</td></tr>
+<tr><td>G5</td><td>17</td><td>7</td><td>29.166667</td></tr>
+</tbody></table>
+<p>The stacked-bar plots are saved in results/Q1_stacked_bars.pdf.</p>
+<h3>Brief explanation</h3>
+<p>The charged-off rate generally increases as credit quality worsens: 5.68% for grade A, 11.75% for B, 16.71% for C, 21.57% for D, 26.57% for E, and about 32.49% for F and G. Sub-grades show additional differences within grades, although the pattern is not perfectly monotonic and small groups are less stable. For example, A1 has a 2.08% charged-off rate versus 7.26% for A5. Use sub_grade to retain this finer information and exclude grade as required. Because grade is determined by sub_grade, including both would be redundant; these descriptive rates alone do not prove sub_grade predicts better on new data.</p>
+<h2>Question 2</h2>
+<pre>cat(&#x27;\nQ2: concise exploration using original training data\n&#x27;)
+write_result(rate_table(train, &#x27;loan_status&#x27;), &#x27;Q2_outcome&#x27;)
+for (v in c(&#x27;term&#x27;,&#x27;home_ownership&#x27;,&#x27;purpose&#x27;))
+  write_result(rate_table(train,v), paste0(&#x27;Q2_&#x27;,v))
+num_vars &lt;- c(&#x27;annual_income&#x27;,&#x27;dti&#x27;,&#x27;installment&#x27;,&#x27;int_rate&#x27;,&#x27;loan_amount&#x27;,&#x27;total_acc&#x27;,&#x27;ITI&#x27;)
+num_summary &lt;- do.call(rbind, lapply(split(train, train$loan_status), function(d)
+  do.call(rbind, lapply(num_vars, function(v) data.frame(
+    Outcome=d$loan_status[1], Variable=v, N=nrow(d), Min=min(d[[v]]),
+    Median=median(d[[v]]), Mean=mean(d[[v]]), Max=max(d[[v]]))))))
+write_result(num_summary, &#x27;Q2_numeric_summary&#x27;)
+pdf(&#x27;results/Q2_boxplots.pdf&#x27;, width=10, height=8)
+par(mfrow=c(2,2))
+for (v in c(&#x27;int_rate&#x27;,&#x27;dti&#x27;,&#x27;annual_income&#x27;,&#x27;ITI&#x27;))
+  boxplot(train[[v]] ~ train$loan_status, main=v, xlab=&#x27;Loan status&#x27;, ylab=v,
+          col=c(&#x27;tomato&#x27;,&#x27;steelblue&#x27;))
+dev.off()
+
+</pre>
+<p>Training outcomes: Fully Paid = 22,502 (85.77%); Charged Off = 3,733 (14.23%).</p>
+<h3>Term</h3><table><thead><tr><th>Level</th><th>Fully_Paid</th><th>Charged_Off</th><th>Charged_Off_Percent</th></tr></thead><tbody>
+<tr><td>36</td><td>17712</td><td>2099</td><td>10.595124</td></tr>
+<tr><td>60</td><td>4790</td><td>1634</td><td>25.435866</td></tr>
+</tbody></table>
+<h3>Home ownership</h3><table><thead><tr><th>Level</th><th>Fully_Paid</th><th>Charged_Off</th><th>Charged_Off_Percent</th></tr></thead><tbody>
+<tr><td>MORTGAGE</td><td>10014</td><td>1568</td><td>13.538249</td></tr>
+<tr><td>OTHER</td><td>57</td><td>16</td><td>21.917808</td></tr>
+<tr><td>OWN</td><td>1638</td><td>282</td><td>14.6875</td></tr>
+<tr><td>RENT</td><td>10793</td><td>1867</td><td>14.747235</td></tr>
+</tbody></table>
+<h3>Purpose</h3><table><thead><tr><th>Level</th><th>Fully_Paid</th><th>Charged_Off</th><th>Charged_Off_Percent</th></tr></thead><tbody>
+<tr><td>car</td><td>877</td><td>109</td><td>11.054767</td></tr>
+<tr><td>credit card</td><td>3067</td><td>354</td><td>10.347852</td></tr>
+<tr><td>Debt consolidation</td><td>10524</td><td>1836</td><td>14.854369</td></tr>
+<tr><td>educational</td><td>180</td><td>32</td><td>15.09434</td></tr>
+<tr><td>home improvement</td><td>1717</td><td>239</td><td>12.218814</td></tr>
+<tr><td>house</td><td>199</td><td>40</td><td>16.736402</td></tr>
+<tr><td>major purchase</td><td>1289</td><td>144</td><td>10.048849</td></tr>
+<tr><td>medical</td><td>378</td><td>72</td><td>16</td></tr>
+<tr><td>moving</td><td>350</td><td>53</td><td>13.151365</td></tr>
+<tr><td>other</td><td>2196</td><td>426</td><td>16.24714</td></tr>
+<tr><td>renewable_energy</td><td>51</td><td>14</td><td>21.538462</td></tr>
+<tr><td>small business</td><td>879</td><td>323</td><td>26.87188</td></tr>
+<tr><td>vacation</td><td>206</td><td>33</td><td>13.807531</td></tr>
+<tr><td>wedding</td><td>589</td><td>58</td><td>8.9644513</td></tr>
+</tbody></table>
+<h3>Numeric summaries by outcome</h3><table><thead><tr><th>Outcome</th><th>Variable</th><th>N</th><th>Min</th><th>Median</th><th>Mean</th><th>Max</th></tr></thead><tbody>
+<tr><td>Charged Off</td><td>annual_income</td><td>3733</td><td>4080</td><td>54000</td><td>63530.674</td><td>1250000</td></tr>
+<tr><td>Charged Off</td><td>dti</td><td>3733</td><td>0</td><td>0.1433</td><td>0.14004806</td><td>0.2985</td></tr>
+<tr><td>Charged Off</td><td>installment</td><td>3733</td><td>22.79</td><td>297.7</td><td>341.07427</td><td>1305.19</td></tr>
+<tr><td>Charged Off</td><td>int_rate</td><td>3733</td><td>0.0542</td><td>0.1372</td><td>0.13879537</td><td>0.244</td></tr>
+<tr><td>Charged Off</td><td>loan_amount</td><td>3733</td><td>1000</td><td>10000</td><td>12321.785</td><td>35000</td></tr>
+<tr><td>Charged Off</td><td>total_acc</td><td>3733</td><td>2</td><td>20</td><td>21.682561</td><td>70</td></tr>
+<tr><td>Charged Off</td><td>ITI</td><td>3733</td><td>0.0016637778</td><td>0.0663</td><td>0.073746693</td><td>0.29755846</td></tr>
+<tr><td>Fully Paid</td><td>annual_income</td><td>22502</td><td>4000</td><td>60000</td><td>70351.922</td><td>6000000</td></tr>
+<tr><td>Fully Paid</td><td>dti</td><td>22502</td><td>0</td><td>0.1322</td><td>0.13159049</td><td>0.2993</td></tr>
+<tr><td>Fully Paid</td><td>installment</td><td>22502</td><td>15.69</td><td>278.48</td><td>323.0928</td><td>1283.5</td></tr>
+<tr><td>Fully Paid</td><td>int_rate</td><td>22502</td><td>0.0542</td><td>0.1149</td><td>0.11644586</td><td>0.2411</td></tr>
+<tr><td>Fully Paid</td><td>loan_amount</td><td>22502</td><td>500</td><td>9600</td><td>10949.853</td><td>35000</td></tr>
+<tr><td>Fully Paid</td><td>total_acc</td><td>22502</td><td>2</td><td>21</td><td>22.184028</td><td>90</td></tr>
+<tr><td>Fully Paid</td><td>ITI</td><td>22502</td><td>0.00033568</td><td>0.056125467</td><td>0.064124135</td><td>0.320262</td></tr>
+</tbody></table>
+<p>Boxplots are saved in results/Q2_boxplots.pdf. int_rate and dti are stored as decimal ratios: 0.1372 means 13.72%.</p>
+<h3>Brief explanation</h3>
+<p>The original training data are imbalanced: 3,733 of 26,235 loans (14.23%) were charged off. The charged-off rate is 25.44% for 60-month loans versus 10.60% for 36-month loans. Small-business loans have a 26.87% charged-off rate versus 14.85% for debt consolidation. Charged-off borrowers have higher median interest rates (13.72% versus 11.49%) and lower median annual income (54,000 versus 60,000). Mean income exceeds median income in both groups, and very high incomes indicate a right-skewed distribution. There are no missing cells or duplicate IDs within the supplied datasets, so no imputation or duplicate removal was needed. These are associations, not evidence of causation.</p>
+<h2>Question 3</h2>
+<pre>cat(&#x27;\nQ3: observed term values\n&#x27;)
+print(table(train$term))
+# Use an unordered factor: the observed loan products are 36 and 60 months.
+</pre>
+<p>Observed terms in trainset.csv: 36 months = 19,811 loans; 60 months = 6,424 loans. term is converted to an unordered factor before model fitting (see the next section).</p>
+<h3>Brief explanation</h3>
+<p>Treat term as categorical: the data contain two loan products, 36 and 60 months, rather than a broad continuous range. This directly compares their risks without extrapolating to unobserved terms. With only these two distinct values, a numeric term and a two-level factor span the same logistic-regression model space and give the same fitted probabilities; the factor is clearer to interpret.</p>
+<h2>Question 4</h2>
+<pre># ITI is added to each dataset (also created in shared setup for exploration).
+train$ITI <- 12 * train$installment / train$annual_income
+bal$ITI <- 12 * bal$installment / bal$annual_income
+test$ITI <- 12 * test$installment / test$annual_income
+
+cat(&#x27;\nQ4: ITI = 12 * installment / annual_income\n&#x27;)
+write_result(data.frame(Min=min(train$ITI), Median=median(train$ITI),
+                       Mean=mean(train$ITI), Max=max(train$ITI)), &#x27;Q4_ITI_summary&#x27;)
+
+# Set response reference so binomial glm estimates P(Charged Off).
+classes &lt;- c(&#x27;Fully Paid&#x27;,&#x27;Charged Off&#x27;)
+cat_vars &lt;- c(&#x27;state&#x27;,&#x27;emp_length&#x27;,&#x27;home_ownership&#x27;,&#x27;purpose&#x27;,&#x27;sub_grade&#x27;,
+              &#x27;term&#x27;,&#x27;verification_status&#x27;)
+for (nm in c(&#x27;train&#x27;,&#x27;bal&#x27;,&#x27;test&#x27;)) {
+  d &lt;- get(nm)
+  d$loan_status &lt;- factor(d$loan_status, levels=classes)
+  for (v in cat_vars) {
+    # Learn levels from original training data, never from test outcomes.
+    lv &lt;- sort(unique(train[[v]]))
+    d[[v]] &lt;- factor(d[[v]], levels=lv)
+  }
+  stopifnot(!anyNA(d))
+  assign(nm, d)
+}
+xvars &lt;- setdiff(names(train), c(&#x27;id&#x27;,&#x27;grade&#x27;,&#x27;loan_status&#x27;))
+form &lt;- reformulate(xvars, response=&#x27;loan_status&#x27;)
+metrics &lt;- function(actual, predicted) {
+  cm &lt;- table(Actual=factor(actual,levels=classes), Predicted=factor(predicted,levels=classes))
+  tn&lt;-cm[1,1]; fp&lt;-cm[1,2]; fn&lt;-cm[2,1]; tp&lt;-cm[2,2]
+  data.frame(TN=unname(tn), FP=unname(fp), FN=unname(fn), TP=unname(tp),
+    FPR=unname(fp/(fp+tn)), FNR=unname(fn/(fn+tp)),
+    Accuracy=unname((tn+tp)/sum(cm)))
+}
+glm_class &lt;- function(m,d) factor(ifelse(predict(m,d,type=&#x27;response&#x27;)&gt;=0.5,
+                                         &#x27;Charged Off&#x27;,&#x27;Fully Paid&#x27;), levels=classes)
+complexity_glm &lt;- function(m) m$rank # estimable coefficients, including intercept
+complexity_cart &lt;- function(m) sum(m$frame$var != &#x27;&lt;leaf&gt;&#x27;)
+
+</pre>
+<h3>ITI summary in trainset.csv</h3><table><thead><tr><th>Min</th><th>Median</th><th>Mean</th><th>Max</th></tr></thead><tbody>
+<tr><td>0.00033568</td><td>0.057499091</td><td>0.065493336</td><td>0.320262</td></tr>
+</tbody></table>
+<h3>Brief explanation</h3>
+<p>ITI equals 12 times the monthly installment divided by annual income. Its minimum, median, mean and maximum are 0.00033568, 0.05749909, 0.06549334 and 0.320262, respectively. Thus, the median scheduled annual loan repayment is about 5.75% of annual income. A higher ITI indicates a larger repayment burden relative to income and may help identify repayment difficulty. Median ITI is 6.63% for charged-off loans versus 5.61% for fully paid loans. This ratio is created in all three datasets, without treating it as a percentage in the model.</p>
+<h2>Question 5</h2>
+<pre>cat(&#x27;\nQ5: logistic regression on original training data\n&#x27;)
+lr_original &lt;- glm(form, data=train, family=binomial())
+stopifnot(lr_original$converged)
+pred_original &lt;- glm_class(lr_original, test)
+cm_original &lt;- table(Actual=test$loan_status, Predicted=pred_original)
+print(cm_original)
+write.csv(as.data.frame.matrix(cm_original), &#x27;results/Q5_confusion_matrix.csv&#x27;)
+write_result(metrics(test$loan_status,pred_original), &#x27;Q5_metrics&#x27;)
+
+</pre>
+<h3>Test confusion matrix — actual rows, predicted columns</h3><table><thead><tr><th>Actual / Predicted</th><th>Fully Paid</th><th>Charged Off</th></tr></thead><tbody>
+<tr><td>Fully Paid</td><td>9601</td><td>42</td></tr>
+<tr><td>Charged Off</td><td>1563</td><td>37</td></tr>
+</tbody></table>
+<h3>Test metrics</h3><table><thead><tr><th>TN</th><th>FP</th><th>FN</th><th>TP</th><th>FPR</th><th>FNR</th><th>Accuracy</th></tr></thead><tbody>
+<tr><td>9601</td><td>42</td><td>1563</td><td>37</td><td>0.44%</td><td>97.69%</td><td>85.72%</td></tr>
+</tbody></table>
+<h3>Brief explanation</h3>
+<p>Rows of the confusion matrix are actual outcomes and columns are predictions; Charged Off is positive. The model identifies only 37 of 1,600 charged-off loans and misses 1,563, giving an FNR of 97.69%. Its FPR is only 0.44%. Accuracy is 85.72%, but simply predicting Fully Paid for every test loan gives 85.77%. Therefore, the apparent accuracy hides poor identification of charged-off loans at the required 0.5 threshold.</p>
+<h2>Question 6</h2>
+<pre>cat(&#x27;\nQ6: balance, full logistic regression, backward elimination, maximal and pruned CART\n&#x27;)
+print(table(bal$loan_status)); print(prop.table(table(bal$loan_status)))
+lr_full &lt;- glm(form, data=bal, family=binomial())
+stopifnot(lr_full$converged)
+# Backward elimination by term-wise likelihood-ratio p-values (alpha = 0.05).
+# Multi-level factors are removed as whole variables, not individual levels.
+lr_opt &lt;- lr_full
+elimination &lt;- data.frame(Step=integer(), Removed=character(), P_value=numeric())
+repeat {
+  dt &lt;- drop1(lr_opt, test=&#x27;Chisq&#x27;)
+  pv &lt;- dt[-1, &#x27;Pr(&gt;Chi)&#x27;]; names(pv) &lt;- rownames(dt)[-1]
+  if (!length(pv) || all(is.na(pv)) || max(pv,na.rm=TRUE)&lt;=0.05) break
+  worst &lt;- names(which.max(pv))
+  elimination &lt;- rbind(elimination, data.frame(Step=nrow(elimination)+1,
+                         Removed=worst, P_value=unname(pv[worst])))
+  lr_opt &lt;- update(lr_opt, paste(&#x27;. ~ . -&#x27;, worst))
+  stopifnot(lr_opt$converged)
+}
+write_result(elimination, &#x27;Q6_backward_elimination&#x27;)
+cat(&#x27;Optimised logistic formula:\n&#x27;); print(formula(lr_opt))
+write.csv(coef(summary(lr_opt)), &#x27;results/Q6_logistic_coefficients.csv&#x27;)
+# Maximal = no cost-complexity pre-pruning; standard rpart size/depth limits retained.
+# minsplit=20, minbucket=7, maxdepth=30; not a guaranteed fully pure tree.
+fit_cart &lt;- function(d, vars, seed) {
+  set.seed(seed)
+  rpart(reformulate(vars,&#x27;loan_status&#x27;), data=d, method=&#x27;class&#x27;,
+        parms=list(split=&#x27;gini&#x27;),
+        control=rpart.control(cp=0, minsplit=20, minbucket=7, maxdepth=30,
+                              xval=10, maxsurrogate=0))
+}
+prune_1se &lt;- function(m) {
+  ct &lt;- m$cptable
+  i &lt;- which.min(ct[,&#x27;xerror&#x27;])
+  cutoff &lt;- ct[i,&#x27;xerror&#x27;] + ct[i,&#x27;xstd&#x27;]
+  eligible &lt;- which(ct[,&#x27;xerror&#x27;]&lt;=cutoff)
+  j &lt;- eligible[which.min(ct[eligible,&#x27;nsplit&#x27;])]
+  prune(m, cp=ct[j,&#x27;CP&#x27;])
+}
+cart_max &lt;- fit_cart(bal, xvars, 2406)
+cart_opt &lt;- prune_1se(cart_max)
+write_result(as.data.frame(cart_max$cptable), &#x27;Q6_CART_cv&#x27;)
+models &lt;- list(&#x27;Logistic (all predictors)&#x27;=lr_full, &#x27;Logistic (backward p-value)&#x27;=lr_opt,
+               &#x27;Maximal CART&#x27;=cart_max, &#x27;CART (10-fold CV, 1SE)&#x27;=cart_opt)
+preds &lt;- lapply(models, function(m) if (inherits(m,&#x27;glm&#x27;)) glm_class(m,test)
+                else predict(m,test,type=&#x27;class&#x27;))
+q6 &lt;- do.call(rbind,lapply(seq_along(models),function(i) {
+  m &lt;- models[[i]]
+  data.frame(Model=names(models)[i], Complexity=if(inherits(m,&#x27;glm&#x27;))
+    complexity_glm(m) else complexity_cart(m), metrics(test$loan_status,preds[[i]]))
+}))
+rownames(q6)&lt;-NULL
+write_result(q6, &#x27;Q6_model_comparison&#x27;)
+pdf(&#x27;results/Q6_pruned_CART.pdf&#x27;, width=14,height=9)
+if (complexity_cart(cart_opt)&gt;0) {plot(cart_opt,uniform=TRUE,margin=0.15); text(cart_opt,use.n=TRUE,cex=0.7)} else {plot.new();text(0.5,0.5,&#x27;1SE selected an intercept-only tree&#x27;)}
+dev.off()
+
+</pre>
+<p>Balance: Fully Paid = 3,733 (50%); Charged Off = 3,733 (50%).</p>
+<h3>Test model comparison</h3><table><thead><tr><th>Model</th><th>Complexity</th><th>TN</th><th>FP</th><th>FN</th><th>TP</th><th>FPR</th><th>FNR</th><th>Accuracy</th></tr></thead><tbody>
+<tr><td>Logistic (all predictors)</td><td>114</td><td>6207</td><td>3436</td><td>590</td><td>1010</td><td>35.63%</td><td>36.88%</td><td>64.19%</td></tr>
+<tr><td>Logistic (backward p-value)</td><td>97</td><td>6225</td><td>3418</td><td>579</td><td>1021</td><td>35.45%</td><td>36.19%</td><td>64.45%</td></tr>
+<tr><td>Maximal CART</td><td>392</td><td>5318</td><td>4325</td><td>659</td><td>941</td><td>44.85%</td><td>41.19%</td><td>55.67%</td></tr>
+<tr><td>CART (10-fold CV, 1SE)</td><td>5</td><td>5159</td><td>4484</td><td>472</td><td>1128</td><td>46.50%</td><td>29.50%</td><td>55.92%</td></tr>
+</tbody></table>
+<p>Complexity = estimated coefficients including the intercept for logistic models; number of splits for CART. Maximal CART uses cp = 0 with minsplit = 20, minbucket = 7, and maxdepth = 30. Pruned CART uses 10-fold cross-validation and the 1SE rule.</p>
+<h3>Backward elimination (whole-variable p-value filter, alpha = 0.05)</h3><table><thead><tr><th>Step</th><th>Removed</th><th>P_value</th></tr></thead><tbody>
+<tr><td>1</td><td>emp_length</td><td>0.44541844</td></tr>
+<tr><td>2</td><td>annual_income</td><td>0.31631707</td></tr>
+<tr><td>3</td><td>total_acc</td><td>0.21867022</td></tr>
+<tr><td>4</td><td>loan_amount</td><td>0.18635975</td></tr>
+<tr><td>5</td><td>home_ownership</td><td>0.079433494</td></tr>
+<tr><td>6</td><td>dti</td><td>0.076740381</td></tr>
+</tbody></table>
+<p>Retained logistic predictors: state, purpose, sub_grade, term, verification_status, installment, int_rate and ITI. The pruned tree is saved in results/Q6_pruned_CART.pdf.</p>
+<h3>Brief explanation</h3>
+<p>The balanced training set contains 3,733 loans per class (50% each). Backward elimination reduces logistic complexity from 114 to 97 estimated coefficients, including the intercept, while slightly reducing both FPR (35.63% to 35.45%) and FNR (36.88% to 36.19%). Pruning reduces CART from 392 to 5 splits and lowers FNR from 41.19% to 29.50%, but raises FPR from 44.85% to 46.50%. For the CEO, backward logistic regression provides the best test accuracy among these balanced-data models and a more even error trade-off; pruned CART misses fewer charged-off loans but flags many more fully paid loans. The final choice depends on the financial costs of these two errors. Selection and pruning used training data only, with no threshold tuning on the test set.</p>
+<h2>Question 7</h2>
+<pre>cat(&#x27;\nQ7: CART recursive feature elimination\n&#x27;)
+# Recursive elimination ranks original variables using CART importance.
+# Each OUTER training fold builds its own elimination path; its validation fold
+# never influences rankings or inner 10-fold pruning. Test set is used only at end.
+# At each size, prune by the SAME 1SE rule as Q6 for a like-for-like comparison.
+rfe_path &lt;- function(d, seed, validation=NULL) {
+  remaining &lt;- xvars; out &lt;- list()
+  while(length(remaining)) {
+    maximal &lt;- fit_cart(d, remaining, seed)
+    fitted &lt;- prune_1se(maximal)
+    imp &lt;- setNames(rep(0,length(remaining)), remaining)
+    available &lt;- intersect(names(maximal$variable.importance),remaining)
+    imp[available] &lt;- maximal$variable.importance[available]
+    entry &lt;- list(vars=remaining, model=fitted)
+    if(!is.null(validation)) {
+      p &lt;- predict(fitted,validation,type=&#x27;class&#x27;)
+      entry$correct &lt;- sum(p==validation$loan_status)
+      entry$n &lt;- nrow(validation)
+    }
+    out[[as.character(length(remaining))]] &lt;- entry
+    # Deterministic alphabetical tie-break when importances tie.
+    remove &lt;- names(sort(imp))[1]
+    remaining &lt;- setdiff(remaining,remove)
+  }
+  out
+}
+set.seed(2406)
+fold &lt;- integer(nrow(bal))
+for (cl in classes) {
+  idx &lt;- which(bal$loan_status==cl)
+  fold[idx] &lt;- sample(rep(1:10,length.out=length(idx)))
+}
+cv_scores &lt;- matrix(NA_real_,10,length(xvars))
+for (k in 1:10) {
+  cat(&#x27;RFE validation fold&#x27;,k,&#x27;of 10\n&#x27;); flush.console()
+  path &lt;- rfe_path(bal[fold!=k,], seed=2406+100*k, validation=bal[fold==k,])
+  for(s in seq_along(xvars)) cv_scores[k,s] &lt;- path[[as.character(s)]]$correct/path[[as.character(s)]]$n
+}
+rfe_cv &lt;- data.frame(Variables=seq_along(xvars), CV_Accuracy=colMeans(cv_scores),
+                     SE=apply(cv_scores,2,sd)/sqrt(10))
+write_result(rfe_cv,&#x27;Q7_RFE_CV&#x27;)
+# Maximise CV accuracy; select fewer variables if tied.
+best_size &lt;- which.max(rfe_cv$CV_Accuracy)
+full_path &lt;- rfe_path(bal,seed=2406)
+cart_rfe &lt;- full_path[[as.character(best_size)]]$model
+selected &lt;- full_path[[as.character(best_size)]]$vars
+cat(&#x27;RFE selected&#x27;,best_size,&#x27;variables:\n&#x27;); print(selected)
+write_result(data.frame(Variable=selected), &#x27;Q7_RFE_selected_variables&#x27;)
+pred_rfe &lt;- predict(cart_rfe,test,type=&#x27;class&#x27;)
+q7 &lt;- rbind(data.frame(Model=&#x27;CART before RFE (1SE)&#x27;, Complexity=complexity_cart(cart_opt),
+                        metrics(test$loan_status,preds[[4]])),
+            data.frame(Model=&#x27;CART after RFE (1SE)&#x27;, Complexity=complexity_cart(cart_rfe),
+                        metrics(test$loan_status,pred_rfe)))
+write_result(q7,&#x27;Q7_RFE_comparison&#x27;)
+cm_rfe &lt;- table(Actual=test$loan_status,Predicted=pred_rfe)
+print(cm_rfe)
+write.csv(as.data.frame.matrix(cm_rfe),&#x27;results/Q7_RFE_confusion_matrix.csv&#x27;)
+cat(&#x27;Accuracy change (percentage points):&#x27;,100*diff(q7$Accuracy),&#x27;\n&#x27;)
+</pre>
+<h3>Test comparison before and after RFE</h3><table><thead><tr><th>Model</th><th>Complexity</th><th>TN</th><th>FP</th><th>FN</th><th>TP</th><th>FPR</th><th>FNR</th><th>Accuracy</th></tr></thead><tbody>
+<tr><td>CART before RFE (1SE)</td><td>5</td><td>5159</td><td>4484</td><td>472</td><td>1128</td><td>46.50%</td><td>29.50%</td><td>55.92%</td></tr>
+<tr><td>CART after RFE (1SE)</td><td>5</td><td>5159</td><td>4484</td><td>472</td><td>1128</td><td>46.50%</td><td>29.50%</td><td>55.92%</td></tr>
+</tbody></table>
+<h3>RFE-selected predictors</h3><table><thead><tr><th>Variable</th></tr></thead><tbody>
+<tr><td>state</td></tr>
+<tr><td>emp_length</td></tr>
+<tr><td>purpose</td></tr>
+<tr><td>sub_grade</td></tr>
+<tr><td>term</td></tr>
+<tr><td>annual_income</td></tr>
+<tr><td>dti</td></tr>
+<tr><td>installment</td></tr>
+<tr><td>int_rate</td></tr>
+<tr><td>ITI</td></tr>
+</tbody></table>
+<h3>RFE test confusion matrix — actual rows, predicted columns</h3><table><thead><tr><th>Actual / Predicted</th><th>Fully Paid</th><th>Charged Off</th></tr></thead><tbody>
+<tr><td>Fully Paid</td><td>5159</td><td>4484</td></tr>
+<tr><td>Charged Off</td><td>472</td><td>1128</td></tr>
+</tbody></table>
+<h3>Brief explanation</h3>
+<p>RFE selects 10 of the 14 candidate predictors using training-only cross-validation. The selected variables are state, emp_length, purpose, sub_grade, term, annual_income, dti, installment, int_rate and ITI. After the same 1SE pruning rule, CART before and after RFE both have 5 splits and identical test predictions: accuracy 55.92%, FPR 46.50%, and FNR 29.50%. The observed accuracy improvement is exactly 0 percentage points, so RFE did not improve predictive accuracy in this implementation. No claim of statistical significance is warranted. Improvements reported in the supplied papers need not transfer to a different dataset or modelling procedure.</p>
+<h2>Question 8</h2>
+<p>Charged-off risk generally rises as loan grades worsen. Longer-term loans and small-business loans show higher charged-off rates. ITI captures repayment burden and is a useful candidate predictor.</p><p>The original-data logistic model misses 97.69% of charged-off loans at the required 0.5 threshold, despite 85.72% accuracy. Accuracy alone is therefore unsuitable for judging its usefulness.</p><p>Among the balanced-data models, backward logistic regression offers the highest test accuracy (64.45%), with FPR 35.45% and FNR 36.19%. Pruned CART is simpler and misses fewer charged-off loans (FNR 29.50%), but incorrectly flags 46.50% of fully paid loans. CART RFE provides no test-accuracy improvement.</p><p>Use backward logistic regression as a candidate screening tool when both error types matter. Consider pruned CART if avoiding charged-off loans is the stronger priority and additional false alarms are acceptable. Quantify expected loan losses and profits forgone before making a final business choice. Validate performance on later loans and monitor changing borrower behaviour before operational use. These predictions support credit decisions; they do not guarantee repayment.</p>
+<p>Brief explanation: This advice balances missed charged-off loans against fully paid loans incorrectly flagged as risky, and follows the observed model results. Advisory word count: 164 (excluding this explanation).</p>
+</body></html>
